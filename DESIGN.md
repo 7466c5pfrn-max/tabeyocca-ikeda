@@ -68,8 +68,8 @@ carnet-de-mots と同じく、単一の `index.html`（PWA）と Supabase（Post
 
 ## 進め方
 
-1. 在庫の手入力、冷蔵・冷凍の残り日数表示、ストックのタブ、夫婦での共有。← いまここ
-2. レシート読み取りと口頭入力（Edge Function）。
+1. 在庫の手入力、冷蔵・冷凍の残り日数表示、ストックのタブ、夫婦での共有。
+2. レシート読み取り（Edge Function `read-receipt`）← いまここ。続いて口頭入力。
 3. レシピ帳（手入力・URL 取り込み・画像読み取り）と在庫との照合。
 4. 通知（毎朝のメール）と、捨てた記録の集計。
 
@@ -79,3 +79,4 @@ carnet-de-mots と同じく、単一の `index.html`（PWA）と Supabase（Post
 2. Authentication でメール・パスワードのログインを有効にし、2人分のユーザーを作る。
 3. `index.html` の `SUPABASE_URL` と `SUPABASE_PUBLISHABLE_KEY` を書き換える。
 4. 片方が「家庭を作る」を選び、表示された招待コードをもう片方が入力して参加する。
+5. Edge Functions → Secrets に `ANTHROPIC_API_KEY` を登録し、`supabase/functions/read-receipt/index.ts` を `read-receipt` という名前で登録する（ダッシュボードのエディタに貼り付けて Deploy）。
