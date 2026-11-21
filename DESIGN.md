@@ -4,7 +4,7 @@
 
 ## 構成
 
-carnet-de-mots と同じく、単一の `index.html`（PWA）と Supabase（Postgres・Auth・Storage・Realtime・Edge Functions）で作る。AI は Edge Function から Claude API を呼び、用途は「画像の読み取り」に限る。レシピを AI に生成させることはしない。
+carnet-de-mots と同じく、単一の `index.html`（PWA）と Supabase（Postgres・Auth・Storage・Realtime・Edge Functions）で作る。AI は Edge Function から Claude API を呼び、用途は「話した内容の整理」と「レシピ画像の書き起こし」に限る。レシピを AI に生成させることはしない。
 
 ## 在庫
 
@@ -20,11 +20,15 @@ carnet-de-mots と同じく、単一の `index.html`（PWA）と Supabase（Post
 
 ## 入力
 
-1. 手入力：食材マスタから候補を出し、色・分類・目安日数を自動で埋める。
-2. 口頭：Web Speech API（ja-JP）で文字にし、AI で品目の JSON に整える。
-3. レシート：写真を AI で読み取り、品目の JSON にする。食品以外（袋代・洗剤など）は除く。
+主な入力は口頭。買ってきたものを冷蔵庫や棚にしまいながら「卵1パック、にんじん3本、豚こまは冷凍」のように話し、まとめて登録する。
 
-2と3は必ず確認画面を通し、人が直してから保存する。
+1. 「＋」で「話して追加」を開き、マイクのボタンを押して話す。Web Speech API（ja-JP）で文字にし、止めるまで聞き続ける。音声認識が使えない環境では、キーボードの音声入力で同じ欄に入れる。文字は手で直せる。
+2. 「整理する」で Edge Function `parse-voice` に送り、Claude が食品ごとに名前・量・置き場所・三色・分類・使い切り目安に整理する。置き場所や「あと3日」を話していればそれに従う。
+3. 確認画面で直し、要らないものはチェックを外してまとめて登録する。聞き取りに自信のない品目は色を付けて示す。
+
+1品ずつの手入力も残す（食材マスタから候補を出し、色・分類・目安日数を自動で埋める）。
+
+レシートの写真読み取りも試したが、精度が足りなかったためやめた。
 
 ## 食材マスタ
 
@@ -52,13 +56,13 @@ carnet-de-mots と同じく、単一の `index.html`（PWA）と Supabase（Post
 
 ## 共有
 
-`households`（家庭）と `household_members`（メンバー）を持ち、全てのデータに `household_id` を付ける。RLS で同じ家庭のメンバーだけが読み書きできる。家庭の作成と参加は RPC（`create_household` / `join_household`）で行い、参加は招待コード方式。Realtime で相手の変更をすぐ画面に反映する。誰が入れたか・使ったかを記録する。
+`households`（家庭）と `household_members`（メンバー）を持ち、全てのデータに `household_id` を付ける。RLS で同じ家庭のメンバーだけが読み書きできる。使うのは夫婦2人だけなので招待コードは使わない。初回ログイン時に RPC `enter_household` を呼ぶと、家庭がなければ作り、あればそこに入る（2人まで）。新規登録（サインアップ）はダッシュボードで無効にしておく。Realtime で相手の変更をすぐ画面に反映する。誰が入れたか・使ったかを記録する。
 
 ## データ
 
 `supabase/migrations/` を参照。
 
-- `households(id, name, invite_code)`
+- `households(id, name)`（`invite_code` 列は残っているが使わない）
 - `household_members(household_id, user_id, display_name)`
 - `foods(id, household_id, name, aliases, color, category, zone, location, default_days)`
 - `items(id, household_id, food_id, name, color, category, zone, location, quantity, unit, added_at, use_by, source, status, added_by, finished_at, finished_by)`
@@ -69,14 +73,14 @@ carnet-de-mots と同じく、単一の `index.html`（PWA）と Supabase（Post
 ## 進め方
 
 1. 在庫の手入力、冷蔵・冷凍の残り日数表示、ストックのタブ、夫婦での共有。
-2. レシート読み取り（Edge Function `read-receipt`）← いまここ。続いて口頭入力。
+2. 口頭でのまとめて入力（Edge Function `parse-voice`）← いまここ。
 3. レシピ帳（手入力・URL 取り込み・画像読み取り）と在庫との照合。
 4. 通知（毎朝のメール）と、捨てた記録の集計。
 
 ## セットアップ
 
 1. Supabase で新しいプロジェクトを作り、`supabase/migrations/` の SQL を順に実行する。
-2. Authentication でメール・パスワードのログインを有効にし、2人分のユーザーを作る。
+2. Authentication でメール・パスワードのログインを有効にし、2人分のユーザーを作る。新規登録（Allow new users to sign up）は無効にする。
 3. `index.html` の `SUPABASE_URL` と `SUPABASE_PUBLISHABLE_KEY` を書き換える。
-4. 片方が「家庭を作る」を選び、表示された招待コードをもう片方が入力して参加する。
-5. Edge Functions → Secrets に `ANTHROPIC_API_KEY` を登録し、`supabase/functions/read-receipt/index.ts` を `read-receipt` という名前で登録する（ダッシュボードのエディタに貼り付けて Deploy）。
+4. Edge Functions → Secrets に `ANTHROPIC_API_KEY` を登録し、`supabase/functions/parse-voice/index.ts` を `parse-voice` という名前で登録する（ダッシュボードのエディタに貼り付けて Deploy）。
+5. それぞれログインして表示名を入れると、同じ家庭に入る。

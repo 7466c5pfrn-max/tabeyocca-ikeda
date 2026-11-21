@@ -20,7 +20,7 @@ const errorMessage = (error: unknown) =>
 
 function logError(requestId: string, stage: string, error: unknown, details: Record<string, unknown> = {}) {
   console.error(JSON.stringify({
-    event: 'read-receipt-error',
+    event: 'parse-voice-error',
     request_id: requestId,
     stage,
     error: errorMessage(error),
@@ -28,16 +28,12 @@ function logError(requestId: string, stage: string, error: unknown, details: Rec
   }));
 }
 
-const MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-type MediaType = typeof MEDIA_TYPES[number];
-// base64 で約 6MB（元画像で約 4.5MB）まで。画面側で縮小してから送る。
-const MAX_IMAGE_LENGTH = 6_000_000;
-
+const MAX_TEXT_LENGTH = 4000;
 const COLORS = ['red', 'yellow', 'green', 'other'] as const;
 const ZONES = ['fresh', 'pantry'] as const;
 const LOCATIONS = ['fridge', 'vegetable', 'freezer', 'pantry'] as const;
 
-const ReceiptSchema = {
+const ItemsSchema = {
   type: 'object',
   properties: {
     items: {
@@ -45,7 +41,7 @@ const ReceiptSchema = {
       items: {
         type: 'object',
         properties: {
-          receipt_text: { type: 'string' },
+          heard: { type: 'string' },
           name: { type: 'string' },
           quantity: { type: 'string' },
           category: { type: 'string' },
@@ -55,7 +51,7 @@ const ReceiptSchema = {
           days: { type: 'integer' },
           uncertain: { type: 'boolean' }
         },
-        required: ['receipt_text', 'name', 'quantity', 'category', 'color', 'zone', 'location', 'days', 'uncertain'],
+        required: ['heard', 'name', 'quantity', 'category', 'color', 'zone', 'location', 'days', 'uncertain'],
         additionalProperties: false
       }
     }
@@ -64,24 +60,32 @@ const ReceiptSchema = {
   additionalProperties: false
 } as const;
 
-function promptFor(knownFoods: string[]) {
-  return `これはスーパーなどのレシートの写真です。家の冷蔵庫・ストック管理アプリに登録するため、買った食品を書き出してください。
+function promptFor(spoken: string, knownFoods: string[]) {
+  return `買い物から帰って、冷蔵庫や棚に食品をしまいながら話した内容を音声認識で文字にしたものです。家の在庫管理アプリに登録するため、食品ごとに整理してください。
+
+話した内容:
+<spoken>
+${spoken}
+</spoken>
 
 ルール:
-- レシートに印字されている品目だけを書き出す。印字にない品目を足したり、推測で補ったりしない。
-- 食品・飲料以外（レジ袋、洗剤、日用品、割引・ポイント・小計・合計・税の行など）は除く。
-- receipt_text にはレシートの表記をそのまま入れる（例: "ﾄﾘﾑﾈﾆｸ"）。
-- name には家庭で普通に呼ぶ食材名を入れる（例: "鶏むね肉"）。ブランド名や容量は外す。略称から食材が特定できないときは、レシートの表記をカタカナに直したものを name にし、uncertain を true にする。
-- 次の「この家の食材マスタ」に同じ食材があれば、その名前をそのまま name に使う。
-- quantity は個数や容量がわかれば入れる（例: "2個", "300g", "1パック"）。わからなければ空文字。同じ品目が複数行あれば1つにまとめて個数を足す。
-- zone は冷蔵・冷凍で日々使うものなら "fresh"、米・乾物・乾麺・缶詰・レトルト・粉類・常温の調味料などのストックなら "pantry"。
-- location は fresh なら "fridge"（冷蔵）、"vegetable"（野菜室）、"freezer"（冷凍食品）のいずれか。pantry なら "pantry"。
+- 話に出てきた食品だけを書き出す。話に出ていない食品を足さない。
+- 音声認識の誤り（同音異義語、句読点の抜け、「にんじん3本ピーマン2個」のような区切れの無さ）は、食品の話として自然な形に直して読む。
+- heard には、その食品について話した部分をそのまま入れる。
+- name には家庭で普通に呼ぶ食材名を入れる（例: "豚こま肉"）。次の「この家の食材マスタ」に同じ食材があれば、その名前をそのまま使う。
+- 何の食品か決めきれないとき、数や場所の聞き取りが怪しいときは uncertain を true にする。
+- quantity は話した個数や量（例: "3本", "1パック", "300g"）。言っていなければ空文字。
+- 同じ食品が何度か出てきたら1つにまとめ、数を足す。「やっぱり〜はなし」のような取り消しにも従う。
+- 「冷凍」「冷凍庫」「野菜室」「棚」「ストック」「常温」など置き場所を言っていればそれに従う。言っていなければ食品から判断する。
+- zone は冷蔵・冷凍で日々使うものなら "fresh"、米・乾物・乾麺・缶詰・レトルト・粉類・常温の調味料など棚にしまうストックなら "pantry"。
+- location は fresh なら "fridge"（冷蔵）、"vegetable"（野菜室）、"freezer"（冷凍）のいずれか。pantry なら "pantry"。
 - color は三色食品群: "red"（肉・魚・卵・乳製品・豆・大豆製品）、"yellow"（ごはん・パン・麺・いも・油脂・砂糖）、"green"（野菜・果物・きのこ・海藻）、それ以外（調味料・飲み物・菓子など）は "other"。
 - category は次から選ぶ。fresh: 肉, 魚, 卵, 乳製品, 豆腐・大豆製品, ハム・ソーセージ, ごはん・パン, 麺, いも, 葉物野菜, 根菜, その他の野菜, きのこ, 果物, 海藻, 調味料, 飲み物, その他。pantry: 米・穀物, 乾麺・パスタ, 粉類, 乾物, 缶詰・瓶詰, レトルト, 調味料, その他。
-- days は fresh のとき、買った日から使い切るまでの目安の日数（冷蔵の生肉なら2〜3、葉物野菜なら3〜4、冷凍食品なら30）。pantry のときは 0。
-- 写真がレシートでない、または読めないときは items を空にする。
+- days は fresh のとき、今日から使い切るまでの目安の日数。「あと3日」「明日まで」「賞味期限は金曜」のように言っていればそれに従い、言っていなければ食品から決める（冷蔵の生肉なら2〜3、葉物野菜なら3〜4、冷凍なら30）。pantry のときは 0。
+- 食品の話が無ければ items を空にする。
 
-この家の食材マスタ: ${knownFoods.length ? knownFoods.join('、') : '（まだなし）'}`;
+この家の食材マスタ: ${knownFoods.length ? knownFoods.join('、') : '（まだなし）'}
+今日: ${new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}`;
 }
 
 function cleanItems(value: unknown) {
@@ -92,13 +96,13 @@ function cleanItems(value: unknown) {
     const location = LOCATIONS.includes(item.location as never) ? item.location as string : 'fridge';
     const days = Number.isInteger(item.days) ? Math.min(Math.max(item.days as number, 0), 365) : 0;
     return {
-      receipt_text: text(item.receipt_text, 100),
+      heard: text(item.heard, 200),
       name: text(item.name, 60),
       quantity: text(item.quantity, 30),
       category: text(item.category, 30),
       color: COLORS.includes(item.color as never) ? item.color as string : 'other',
       zone,
-      // fresh なのに常温、pantry なのに冷蔵、といった食い違いは区分に合わせて直す。
+      // 区分と置き場所の食い違いは区分に合わせて直す。
       location: zone === 'pantry' ? 'pantry' : (location === 'pantry' ? 'fridge' : location),
       days: zone === 'pantry' ? 0 : (days || 7),
       uncertain: item.uncertain === true
@@ -138,40 +142,29 @@ Deno.serve(async request => {
       logError(requestId, 'request_json', error);
       return json({ error: 'Invalid JSON body', request_id: requestId }, 400);
     }
-    const image = typeof input.image === 'string' ? input.image : '';
-    const mediaType = input.media_type as MediaType;
-    if (!image || !MEDIA_TYPES.includes(mediaType)) {
-      return json({ error: 'image and media_type are required', request_id: requestId }, 400);
-    }
-    if (image.length > MAX_IMAGE_LENGTH) {
-      return json({ error: 'Image is too large', request_id: requestId }, 413);
-    }
+    const spoken = text(input.text, MAX_TEXT_LENGTH);
+    if (!spoken) return json({ error: 'text is required', request_id: requestId }, 400);
     const knownFoods = (Array.isArray(input.known_foods) ? input.known_foods : [])
       .map(name => text(name, 60)).filter(Boolean).slice(0, 300);
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!apiKey) {
       logError(requestId, 'anthropic_environment', new Error('Anthropic API key is missing'));
-      return json({ error: 'Receipt reading is not configured', request_id: requestId }, 503);
+      return json({ error: 'Voice input is not configured', request_id: requestId }, 503);
     }
     const anthropic = new Anthropic({ apiKey });
 
     let response;
     try {
+      // 冷蔵庫の前で待つ処理なので速さを優先して effort は low。
       // 安全判定で断られたときは、サーバー側で別のモデルに自動で引き継ぐ。
       response = await anthropic.beta.messages.parse({
         model: 'claude-opus-5-5',
         max_tokens: 16000,
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
-        output_config: { effort: 'medium', format: betaJSONSchemaOutputFormat(ReceiptSchema) },
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: image } },
-            { type: 'text', text: promptFor(knownFoods) }
-          ]
-        }]
+        output_config: { effort: 'low', format: betaJSONSchemaOutputFormat(ItemsSchema) },
+        messages: [{ role: 'user', content: promptFor(spoken, knownFoods) }]
       });
     } catch (error) {
       logError(requestId, 'anthropic_request', error);
@@ -181,7 +174,7 @@ Deno.serve(async request => {
 
     if (response.stop_reason === 'refusal') {
       logError(requestId, 'anthropic_refusal', new Error('Request was declined'), { stop_details: response.stop_details });
-      return json({ error: 'The receipt could not be read', request_id: requestId }, 422);
+      return json({ error: 'The text could not be organized', request_id: requestId }, 422);
     }
     if (!response.parsed_output) {
       logError(requestId, 'anthropic_response', new Error('No parsed output'), { stop_reason: response.stop_reason });
