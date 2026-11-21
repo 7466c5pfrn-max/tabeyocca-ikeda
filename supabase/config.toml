@@ -1,2 +1,2 @@
-[functions.read-receipt]
+[functions.parse-voice]
 verify_jwt = true

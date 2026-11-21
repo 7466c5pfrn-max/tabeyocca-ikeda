@@ -128,8 +128,16 @@ dialog{
 dialog::backdrop{background:rgba(0,0,0,.35)}
 dialog .sheet{padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px))}
 dialog h3{margin:0 0 4px;font-size:18px}
-.code{font-size:28px;letter-spacing:.15em;font-weight:700;margin:4px 0}
-.btn.photo{width:100%;margin:12px 0 4px}
+.link{background:none;border:0;padding:8px 0;color:var(--accent);text-decoration:underline;font-size:14px}
+.mic{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:12px 0 0;padding:16px;
+  border-radius:14px;border:2px solid var(--accent);background:var(--card);color:var(--accent);font-size:17px;font-weight:700}
+.mic svg{width:24px;height:24px}
+.mic.on{background:var(--accent);color:var(--on-accent)}
+.mic.on svg{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.mic.on svg{animation:none}}
+textarea{width:100%;min-height:9em;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+  background:var(--paper);font:inherit;font-size:16px;line-height:1.6;resize:vertical}
 
 .r-list{list-style:none;margin:12px 0 0;padding:0;max-height:58vh;overflow-y:auto;border-top:1px solid var(--line)}
 .r-row{display:flex;gap:10px;padding:12px 2px;border-bottom:1px solid var(--line)}
@@ -161,23 +169,12 @@ dialog h3{margin:0 0 4px;font-size:18px}
 </main>
 
 <main id="view-setup" hidden>
-  <h1>家庭の設定</h1>
-  <p class="muted small">はじめに片方が家庭を作り、表示される招待コードをもう片方が入力して参加します。</p>
-  <form id="create-form" class="card">
-    <h3>家庭を作る</h3>
-    <label for="create-name">家庭の名前</label>
-    <input id="create-name" placeholder="わが家">
-    <label for="create-me">あなたの表示名</label>
-    <input id="create-me" required>
-    <button class="btn primary wide" type="submit">作る</button>
-  </form>
-  <form id="join-form" class="card" style="margin-top:16px">
-    <h3>招待コードで参加する</h3>
-    <label for="join-code">招待コード</label>
-    <input id="join-code" autocapitalize="characters" required>
-    <label for="join-me">あなたの表示名</label>
-    <input id="join-me" required>
-    <button class="btn wide" type="submit">参加する</button>
+  <h1>はじめに</h1>
+  <form id="setup-form" class="card">
+    <label for="setup-me">あなたの表示名</label>
+    <input id="setup-me" required>
+    <p class="small muted">夫婦で同じ冷蔵庫を共有します。どちらが先に始めても、同じ家庭に入ります。</p>
+    <button class="btn primary wide" type="submit">はじめる</button>
   </form>
   <p class="error" id="setup-error"></p>
 </main>
@@ -208,8 +205,6 @@ dialog h3{margin:0 0 4px;font-size:18px}
   <div class="card">
     <div class="small muted">家庭</div>
     <div id="settings-household" style="font-weight:700"></div>
-    <div class="small muted" style="margin-top:12px">招待コード</div>
-    <div class="code" id="settings-code"></div>
     <div class="small muted" style="margin-top:12px">メンバー</div>
     <div id="settings-members"></div>
   </div>
@@ -230,8 +225,6 @@ dialog h3{margin:0 0 4px;font-size:18px}
 <dialog id="add-dialog">
   <form class="sheet" id="add-form" method="dialog">
     <h3>食材を追加</h3>
-    <button class="btn photo" type="button" id="add-receipt">レシートを撮って読み取る</button>
-    <input id="receipt-file" type="file" accept="image/*" hidden>
     <label for="add-name">食材名</label>
     <input id="add-name" list="food-names" autocomplete="off" required>
     <datalist id="food-names"></datalist>
@@ -270,15 +263,31 @@ dialog h3{margin:0 0 4px;font-size:18px}
   </form>
 </dialog>
 
-<dialog id="receipt-dialog">
-  <div class="sheet">
-    <h3>レシートの読み取り</h3>
-    <p class="small muted" id="receipt-status"></p>
-    <ul class="r-list" id="receipt-list" hidden></ul>
-    <p class="error" id="receipt-error"></p>
+<dialog id="voice-dialog">
+  <div class="sheet" id="voice-talk">
+    <h3>話して追加</h3>
+    <p class="small muted">しまいながら「卵1パック、にんじん3本、豚こま300グラムは冷凍」のように話してください。置き場所や「あと3日」なども一緒に言えます。</p>
+    <button class="mic" type="button" id="voice-mic" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      <span id="voice-mic-label">話しはじめる</span>
+    </button>
+    <p class="small muted" id="voice-no-sr" hidden>この画面では音声認識が使えません。下の欄をタップして、キーボードのマイクボタンで話してください。</p>
+    <textarea id="voice-text" placeholder="話した内容がここに入ります。手で直したり書き足したりもできます。"></textarea>
+    <p class="error" id="voice-error"></p>
     <div class="row-btns">
-      <button class="btn" type="button" id="receipt-cancel">やめる</button>
-      <button class="btn primary" type="button" id="receipt-save" hidden>追加</button>
+      <button class="btn" type="button" id="voice-cancel">やめる</button>
+      <button class="btn primary" type="button" id="voice-parse">整理する</button>
+    </div>
+    <button class="link" type="button" id="voice-manual">1品ずつ手で入力する</button>
+  </div>
+  <div class="sheet" id="voice-review" hidden>
+    <h3>内容の確認</h3>
+    <p class="small muted" id="review-status"></p>
+    <ul class="r-list" id="review-list"></ul>
+    <p class="error" id="review-error"></p>
+    <div class="row-btns">
+      <button class="btn" type="button" id="review-back">話し直す</button>
+      <button class="btn primary" type="button" id="review-save">追加</button>
     </div>
   </div>
 </dialog>
@@ -451,7 +460,6 @@ function render(){
 
   if (currentView === 'settings'){
     $('settings-household').textContent = household?.name || '';
-    $('settings-code').textContent = household?.invite_code || '';
     $('settings-members').innerHTML = members.map(m => `<div>${esc(m.display_name || '（名前なし）')}${m.user_id === user.id ? ' <span class="small muted">（あなた）</span>' : ''}</div>`).join('');
   }
 }
@@ -459,7 +467,7 @@ function render(){
 /* ---------- データ ---------- */
 async function loadHousehold(){
   const { data, error } = await SB.from('household_members')
-    .select('household_id, households(id, name, invite_code)')
+    .select('household_id, households(id, name)')
     .eq('user_id', user.id).limit(1).maybeSingle();
   if (error) throw error;
   household = data?.households || null;
@@ -501,18 +509,11 @@ $('login-form').addEventListener('submit', async e => {
 });
 $('logout').addEventListener('click', () => SB.auth.signOut());
 
-$('create-form').addEventListener('submit', async e => {
+$('setup-form').addEventListener('submit', async e => {
   e.preventDefault();
   showError('setup-error', null);
-  const { error } = await SB.rpc('create_household', { p_name:$('create-name').value, p_display_name:$('create-me').value });
-  if (error) return showError('setup-error', error);
-  enterApp().catch(err => showError('setup-error', err));
-});
-$('join-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  showError('setup-error', null);
-  const { error } = await SB.rpc('join_household', { p_invite_code:$('join-code').value, p_display_name:$('join-me').value });
-  if (error) return showError('setup-error', error.message.includes('invite code') ? '招待コードが見つかりません' : error);
+  const { error } = await SB.rpc('enter_household', { p_display_name:$('setup-me').value });
+  if (error) return showError('setup-error', error.message.includes('full') ? 'この家庭はすでに2人で使われています' : error);
   enterApp().catch(err => showError('setup-error', err));
 });
 
@@ -557,7 +558,7 @@ function findFood(name){
   return foods.find(f => f.name === n || f.aliases.includes(n)) || null;
 }
 
-$('fab').addEventListener('click', () => {
+function openManualAdd(){
   $('add-form').reset();
   Object.assign(add, currentView === 'pantry'
     ? { zone:'pantry', location:'pantry', color:'other' }
@@ -566,7 +567,7 @@ $('fab').addEventListener('click', () => {
   renderAddForm();
   $('add-dialog').showModal();
   $('add-name').focus();
-});
+}
 $('add-cancel').addEventListener('click', () => $('add-dialog').close());
 
 $('add-zone').addEventListener('click', e => {
@@ -634,46 +635,112 @@ $('add-form').addEventListener('submit', async e => {
   }
 });
 
-/* ---------- レシート読み取り ---------- */
+/* ---------- 話して追加 ---------- */
 const PLACES = [['fridge', '冷蔵'], ['vegetable', '野菜室'], ['freezer', '冷凍'], ['pantry', 'ストック']];
-const RECEIPT_MAX_SIDE = 1568;
-let receiptToken = 0;
-let receiptItems = [];
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let listening = false;
+let spokenBase = '';
+let parseToken = 0;
+let reviewItems = [];
 
-// 送る量を減らすため、長辺を縮めて JPEG にする。
-function shrinkImage(file){
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, RECEIPT_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.naturalWidth * scale);
-      canvas.height = Math.round(img.naturalHeight * scale);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('画像を読み込めませんでした')); };
-    img.src = url;
+function joinText(a, b){
+  a = a.trim(); b = b.trim();
+  if (!a || !b) return a || b;
+  return /[、。,.]$/.test(a) ? a + b : a + '、' + b;
+}
+function setListening(on){
+  listening = on;
+  $('voice-mic').classList.toggle('on', on);
+  $('voice-mic').setAttribute('aria-pressed', String(on));
+  $('voice-mic-label').textContent = on ? '聞いています（タップで止める）' : '話しはじめる';
+}
+function startRecognition(){
+  const rec = recognition = new SR();
+  rec.lang = 'ja-JP';
+  rec.continuous = true;
+  rec.interimResults = true;
+  let finals = '';
+  rec.onresult = e => {
+    finals = '';
+    let interim = '';
+    for (const r of e.results){
+      if (r.isFinal) finals += r[0].transcript; else interim += r[0].transcript;
+    }
+    $('voice-text').value = joinText(spokenBase, finals + interim);
+  };
+  rec.onerror = e => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    setListening(false);
+    showError('voice-error', e.error === 'not-allowed' || e.error === 'service-not-allowed'
+      ? 'マイクが使えません。設定でマイクを許可するか、下の欄をタップしてキーボードのマイクボタンで話してください。'
+      : `音声認識が止まりました（${e.error}）`);
+  };
+  rec.onend = () => {
+    spokenBase = joinText(spokenBase, finals);
+    $('voice-text').value = spokenBase;
+    // 黙っていると自動で止まるので、止めるボタンを押すまで聞き直す。
+    if (listening && recognition === rec){
+      try { startRecognition(); } catch (err){ setListening(false); }
+    }
+  };
+  rec.start();
+}
+// 止めた直後に確定する言葉を取りこぼさないよう、終わるのを待つ。
+function stopRecognition(){
+  return new Promise(resolve => {
+    const rec = recognition;
+    const wasListening = listening;
+    setListening(false);
+    if (!rec || !wasListening) return resolve();
+    const timer = setTimeout(resolve, 1500);
+    rec.addEventListener('end', () => { clearTimeout(timer); resolve(); }, { once:true });
+    rec.stop();
   });
 }
+
+function openVoice(){
+  parseToken++;
+  spokenBase = '';
+  $('voice-text').value = '';
+  $('voice-mic').hidden = !SR;
+  $('voice-no-sr').hidden = !!SR;
+  $('voice-talk').hidden = false;
+  $('voice-review').hidden = true;
+  showError('voice-error', null);
+  $('voice-dialog').showModal();
+}
+$('fab').addEventListener('click', openVoice);
+
+$('voice-mic').addEventListener('click', async () => {
+  if (listening) return stopRecognition();
+  showError('voice-error', null);
+  spokenBase = $('voice-text').value;
+  setListening(true);
+  try { startRecognition(); } catch (err){ setListening(false); showError('voice-error', err); }
+});
+$('voice-dialog').addEventListener('close', () => { parseToken++; stopRecognition(); });
+$('voice-cancel').addEventListener('click', () => $('voice-dialog').close());
+$('voice-manual').addEventListener('click', () => {
+  $('voice-dialog').close();
+  openManualAdd();
+});
 
 async function functionError(error){
   try {
     const body = await error.context.json();
-    if (body?.error) return new Error(`読み取りに失敗しました（${body.error}）`);
+    if (body?.error) return new Error(`整理できませんでした（${body.error}）`);
   } catch (e) {}
-  return new Error(`読み取りに失敗しました（${error.message || error}）`);
+  return new Error(`整理できませんでした（${error.message || error}）`);
 }
 
-function receiptRow(item, index){
+function reviewRow(item, index){
   const place = item.zone === 'pantry' ? 'pantry' : item.location;
   return `<li class="r-row${item.uncertain ? ' uncertain' : ''}" data-i="${index}">
     <input type="checkbox" class="r-on" checked aria-label="追加する">
     <div class="r-body">
       <input class="r-name" value="${esc(item.name)}" aria-label="食材名">
-      <div class="r-src">レシート：${esc(item.receipt_text || '—')}${item.uncertain ? '・要確認' : ''}</div>
+      <div class="r-src">聞き取り：${esc(item.heard || '—')}${item.uncertain ? '・要確認' : ''}</div>
       <div class="r-grid">
         <select class="r-place" aria-label="保存場所">${PLACES.map(([v, l]) => `<option value="${v}"${v === place ? ' selected' : ''}>${l}</option>`).join('')}</select>
         <select class="r-color" aria-label="三色">${COLOR_ORDER.map(c => `<option value="${c}"${c === item.color ? ' selected' : ''}>${COLOR_LABEL[c]}</option>`).join('')}</select>
@@ -683,57 +750,53 @@ function receiptRow(item, index){
     </div>
   </li>`;
 }
-
-function updateReceiptSave(){
-  const n = $('receipt-list').querySelectorAll('.r-on:checked').length;
-  $('receipt-save').textContent = `${n}件を追加`;
-  $('receipt-save').disabled = n === 0;
+function updateReviewSave(){
+  const n = $('review-list').querySelectorAll('.r-on:checked').length;
+  $('review-save').textContent = `${n}件を追加`;
+  $('review-save').disabled = n === 0;
 }
 
-$('add-receipt').addEventListener('click', () => $('receipt-file').click());
-$('receipt-file').addEventListener('change', async () => {
-  const file = $('receipt-file').files[0];
-  $('receipt-file').value = '';
-  if (!file) return;
-  const token = ++receiptToken;
-  $('add-dialog').close();
-  $('receipt-status').textContent = '読み取り中です。20〜30秒ほどかかります…';
-  $('receipt-list').hidden = true;
-  $('receipt-save').hidden = true;
-  showError('receipt-error', null);
-  $('receipt-dialog').showModal();
+$('voice-parse').addEventListener('click', async () => {
+  await stopRecognition();
+  showError('voice-error', null);
+  const text = $('voice-text').value.trim();
+  if (!text) return showError('voice-error', 'まだ何も入っていません。マイクのボタンを押して話してください。');
+  const token = ++parseToken;
+  $('voice-parse').disabled = true;
+  $('voice-parse').textContent = '整理しています…';
   try {
-    const image = await shrinkImage(file);
-    const { data, error } = await SB.functions.invoke('read-receipt', {
-      body:{ image, media_type:'image/jpeg', known_foods:foods.map(f => f.name) }
+    const { data, error } = await SB.functions.invoke('parse-voice', {
+      body:{ text, known_foods:foods.map(f => f.name) }
     });
-    if (token !== receiptToken) return;
+    if (token !== parseToken) return;
     if (error) throw await functionError(error);
-    const list = receiptItems = data?.items || [];
-    if (!list.length){
-      $('receipt-status').textContent = '食品が見つかりませんでした。明るい場所で、レシート全体が入るように撮り直してください。';
-      return;
-    }
+    const list = reviewItems = data?.items || [];
+    if (!list.length) return showError('voice-error', '食品が見つかりませんでした。「にんじん3本」のように、食品名と数を話してください。');
     const unsure = list.filter(i => i.uncertain).length;
-    $('receipt-status').textContent = `${list.length}品を読み取りました。内容を確かめて、違うところは直してください。`
-      + (unsure ? `色の付いた${unsure}品は読み取りに自信がないものです。` : '');
-    $('receipt-list').innerHTML = list.map(receiptRow).join('');
-    $('receipt-list').hidden = false;
-    $('receipt-save').hidden = false;
-    updateReceiptSave();
+    $('review-status').textContent = `${list.length}品に整理しました。違うところは直し、要らないものはチェックを外してください。`
+      + (unsure ? `色の付いた${unsure}品は聞き取りに自信がないものです。` : '');
+    $('review-list').innerHTML = list.map(reviewRow).join('');
+    showError('review-error', null);
+    updateReviewSave();
+    $('voice-talk').hidden = true;
+    $('voice-review').hidden = false;
   } catch (err){
-    if (token !== receiptToken) return;
-    $('receipt-status').textContent = '';
-    showError('receipt-error', err);
+    if (token === parseToken) showError('voice-error', err);
+  } finally {
+    $('voice-parse').disabled = false;
+    $('voice-parse').textContent = '整理する';
   }
 });
-$('receipt-cancel').addEventListener('click', () => { receiptToken++; $('receipt-dialog').close(); });
+$('review-back').addEventListener('click', () => {
+  $('voice-review').hidden = true;
+  $('voice-talk').hidden = false;
+});
 
-$('receipt-list').addEventListener('change', e => {
+$('review-list').addEventListener('change', e => {
   const row = e.target.closest('.r-row'); if (!row) return;
   if (e.target.classList.contains('r-on')){
     row.classList.toggle('off', !e.target.checked);
-    updateReceiptSave();
+    updateReviewSave();
   }
   if (e.target.classList.contains('r-place')){
     const place = e.target.value;
@@ -742,9 +805,9 @@ $('receipt-list').addEventListener('change', e => {
   }
 });
 
-$('receipt-save').addEventListener('click', async () => {
-  showError('receipt-error', null);
-  const rows = [...$('receipt-list').querySelectorAll('.r-row')]
+$('review-save').addEventListener('click', async () => {
+  showError('review-error', null);
+  const rows = [...$('review-list').querySelectorAll('.r-row')]
     .filter(row => row.querySelector('.r-on').checked)
     .map(row => {
       const place = row.querySelector('.r-place').value;
@@ -753,11 +816,11 @@ $('receipt-save').addEventListener('click', async () => {
       const days = zone === 'fresh' ? (parseInt(row.querySelector('.r-days').value, 10) || (place === 'freezer' ? FREEZER_DAYS : 7)) : null;
       return { name, zone, location:place, color:row.querySelector('.r-color').value,
         quantity:row.querySelector('.r-qty').value.trim(), days,
-        category:receiptItems[Number(row.dataset.i)]?.category || '' };
+        category:reviewItems[Number(row.dataset.i)]?.category || '' };
     })
     .filter(r => r.name);
   if (!rows.length) return;
-  $('receipt-save').disabled = true;
+  $('review-save').disabled = true;
   try {
     // 同じ食材が複数行あっても、食材マスタは1行にまとめて更新する。
     const masters = new Map();
@@ -781,15 +844,15 @@ $('receipt-save').addEventListener('click', async () => {
     const { error } = await SB.from('items').insert(rows.map(r => ({
       household_id:household.id, food_id:foodIds.get(r.foodName) || null, name:r.name, color:r.color,
       category:r.category, zone:r.zone, location:r.location, quantity:r.quantity,
-      added_at:todayStr(), use_by:r.days ? addDays(todayStr(), r.days) : null, source:'receipt'
+      added_at:todayStr(), use_by:r.days ? addDays(todayStr(), r.days) : null, source:'voice'
     })));
     if (error) throw error;
-    $('receipt-dialog').close();
+    $('voice-dialog').close();
     await loadAll();
   } catch (err){
-    showError('receipt-error', err);
+    showError('review-error', err);
   } finally {
-    updateReceiptSave();
+    updateReviewSave();
   }
 });
 
