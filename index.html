@@ -93,6 +93,11 @@ input,select{
 .badge{flex:none;font-size:13px;padding:2px 10px;border-radius:999px;background:var(--other-bg);color:var(--muted);white-space:nowrap}
 .badge.urgent{background:var(--urgent-bg);color:var(--urgent);font-weight:700}
 .badge.soon{background:var(--soon-bg);color:var(--soon);font-weight:700}
+.badge.ok{background:var(--green-bg);color:var(--green);font-weight:700}
+.star-mark{color:var(--yellow);margin-right:4px}
+.search-links{margin:12px 2px 0;font-size:14px;color:var(--muted)}
+.search-links a{color:var(--accent)}
+input[type="search"]{margin-top:4px}
 .empty{padding:16px;color:var(--muted);font-size:14px;text-align:center}
 
 .pick{margin-top:24px;padding:14px 16px;border-radius:14px;border:1px dashed var(--line)}
@@ -126,6 +131,33 @@ dialog{
   border-radius:18px 18px 0 0;background:var(--card);color:var(--text);
 }
 dialog::backdrop{background:rgba(0,0,0,.35)}
+dialog{overflow-y:auto}
+dialog h4{margin:20px 0 6px;font-size:14px;color:var(--muted);font-weight:500}
+.url-row{display:flex;gap:8px}
+.url-row input{flex:1;min-width:0}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.thumbs img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.ing-edit{list-style:none;margin:0;padding:0}
+.ing-row{display:grid;grid-template-columns:1fr 5.5em auto auto;gap:6px;align-items:center;padding:4px 0}
+.ing-row.uncertain{background:var(--soon-bg);border-radius:8px;padding:4px}
+.ing-row input{padding:8px 10px}
+.ing-seas{display:flex;align-items:center;gap:2px;margin:0;font-size:12px;white-space:nowrap}
+.ing-seas input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+.ing-del{width:32px;height:32px;border:0;border-radius:8px;background:var(--other-bg);color:var(--muted);font-size:18px;line-height:1}
+.rv-head{display:flex;align-items:flex-start;gap:8px}
+.rv-head h3{flex:1}
+.star{flex:none;border:0;background:none;font-size:26px;line-height:1;color:var(--muted);padding:0 4px}
+.star[aria-pressed="true"]{color:var(--yellow)}
+.ing-list{list-style:none;margin:0;padding:0}
+.ing-list li{display:flex;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line)}
+.ing-list .ing-n{flex:1}
+.ing-list .ing-a{color:var(--muted);font-size:14px}
+.ing-mark{flex:none;width:1.4em;text-align:center;font-weight:700}
+.ing-mark.have{color:var(--green)}
+.ing-mark.miss{color:var(--muted)}
+.ing-list li.seas{color:var(--muted);font-size:14px}
+.steps{margin:0;padding-left:1.4em}
+.steps li{padding:4px 0}
 dialog .sheet{padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px))}
 dialog h3{margin:0 0 4px;font-size:18px}
 .link{background:none;border:0;padding:8px 0;color:var(--accent);text-decoration:underline;font-size:14px}
@@ -183,6 +215,11 @@ textarea{width:100%;min-height:9em;margin-top:12px;padding:10px 12px;border:1px 
   <h1 id="home-title">たべよっか</h1>
   <h2>早めに使う</h2>
   <ul class="list" id="home-urgent"></ul>
+  <div id="home-recipes-wrap" hidden>
+    <h2>これを使うなら</h2>
+    <ul class="list" id="home-recipes"></ul>
+  </div>
+  <div id="home-search-links"></div>
   <div class="pick" id="home-pick" hidden>
     <div class="small muted">ストックから</div>
     <div id="home-pick-body"></div>
@@ -198,6 +235,22 @@ textarea{width:100%;min-height:9em;margin-top:12px;padding:10px 12px;border:1px 
   <h1>ストック</h1>
   <p class="muted small">米・乾物・缶詰など。ときどき眺めて、使えそうなものを探してください。</p>
   <div id="pantry-groups"></div>
+</main>
+
+<main id="view-recipes" hidden>
+  <h1>レシピ</h1>
+  <input id="recipe-search" type="search" placeholder="料理名や材料で探す" aria-label="レシピを探す">
+  <div class="seg" id="recipe-filter" style="margin-top:8px">
+    <button type="button" data-v="all" aria-pressed="true">すべて</button>
+    <button type="button" data-v="fav" aria-pressed="false">お気に入り</button>
+  </div>
+  <div id="recipe-suggest-wrap" hidden>
+    <h2>今の在庫で作れそう</h2>
+    <ul class="list" id="recipe-suggest"></ul>
+  </div>
+  <div id="recipe-search-links"></div>
+  <h2 id="recipe-all-title">レシピ帳</h2>
+  <ul class="list" id="recipe-all"></ul>
 </main>
 
 <main id="view-settings" hidden>
@@ -218,6 +271,7 @@ textarea{width:100%;min-height:9em;margin-top:12px;padding:10px 12px;border:1px 
     <button data-view="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</button>
     <button data-view="fresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M5 10h14M8 6v2M8 13v3"/></svg>冷蔵・冷凍</button>
     <button data-view="pantry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4zM4 12h16M9 8h6M9 16h6"/></svg>ストック</button>
+    <button data-view="recipes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5zM4 19.5A1.5 1.5 0 0 0 5.5 21H19v-3M8 7h7M8 10.5h5"/></svg>レシピ</button>
     <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>設定</button>
   </div>
 </nav>
@@ -292,6 +346,91 @@ textarea{width:100%;min-height:9em;margin-top:12px;padding:10px 12px;border:1px 
   </div>
 </dialog>
 
+<dialog id="recipe-add-dialog">
+  <div class="sheet">
+    <h3>レシピを追加</h3>
+    <button class="btn wide" type="button" id="ra-photo">写真から（雑誌・料理本など）</button>
+    <input id="ra-files" type="file" accept="image/*" multiple hidden>
+    <label for="ra-url">URL から（レシピサイト）</label>
+    <div class="url-row">
+      <input id="ra-url" type="url" inputmode="url" placeholder="https://">
+      <button class="btn" type="button" id="ra-url-go">取り込む</button>
+    </div>
+    <button class="btn wide" type="button" id="ra-manual">手で入力する</button>
+    <p class="small muted" id="ra-status"></p>
+    <p class="error" id="ra-error"></p>
+    <div class="row-btns"><button class="btn" type="button" id="ra-cancel">閉じる</button></div>
+  </div>
+</dialog>
+
+<dialog id="recipe-edit-dialog">
+  <form class="sheet" id="re-form">
+    <h3 id="re-heading">レシピの確認</h3>
+    <p class="small muted" id="re-lead"></p>
+    <div class="thumbs" id="re-thumbs"></div>
+    <label for="re-title">料理名</label>
+    <input id="re-title" required>
+    <div class="two">
+      <div>
+        <label for="re-servings">何人分</label>
+        <input id="re-servings" placeholder="2人分">
+      </div>
+      <div>
+        <label for="re-minutes">調理時間（分）</label>
+        <input id="re-minutes" type="number" inputmode="numeric" min="1">
+      </div>
+    </div>
+    <label for="re-note">出典メモ</label>
+    <input id="re-note" placeholder="雑誌名や号など">
+    <label>材料</label>
+    <ul class="ing-edit" id="re-ings"></ul>
+    <button class="link" type="button" id="re-add-ing">＋ 材料を追加</button>
+    <label for="re-steps">作り方（1行に1つ）</label>
+    <textarea id="re-steps"></textarea>
+    <p class="error" id="re-error"></p>
+    <div class="row-btns">
+      <button class="btn" type="button" id="re-cancel">やめる</button>
+      <button class="btn primary" type="submit" id="re-save">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="recipe-view-dialog">
+  <div class="sheet">
+    <div class="rv-head">
+      <h3 id="rv-title"></h3>
+      <button class="star" type="button" id="rv-fav" aria-pressed="false" aria-label="お気に入り">★</button>
+    </div>
+    <div class="small muted" id="rv-meta"></div>
+    <h4>材料</h4>
+    <ul class="ing-list" id="rv-ings"></ul>
+    <h4>作り方</h4>
+    <ol class="steps" id="rv-steps"></ol>
+    <div class="small muted" id="rv-source" style="margin-top:16px"></div>
+    <div class="thumbs" id="rv-thumbs"></div>
+    <div id="rv-cook" hidden>
+      <h4>使った食材</h4>
+      <p class="small muted">在庫から外すものにチェックしてください。</p>
+      <ul class="r-list" id="rv-cook-list"></ul>
+      <div class="row-btns">
+        <button class="btn" type="button" id="rv-cook-cancel">やめる</button>
+        <button class="btn primary" type="button" id="rv-cook-save">記録する</button>
+      </div>
+    </div>
+    <p class="error" id="rv-error"></p>
+    <div id="rv-actions">
+      <div class="row-btns">
+        <button class="btn primary" type="button" id="rv-cooked">作った</button>
+        <button class="btn" type="button" id="rv-edit">編集</button>
+      </div>
+      <div class="row-btns">
+        <button class="btn danger" type="button" id="rv-delete">削除</button>
+        <button class="btn" type="button" id="rv-close">閉じる</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="item-dialog">
   <div class="sheet">
     <h3 id="item-title"></h3>
@@ -352,6 +491,7 @@ let foods = [];
 let channel = null;
 let currentView = 'home';
 let openItem = null;
+let recipes = [];
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -390,10 +530,10 @@ function leftBadge(item){
 }
 
 /* ---------- 画面 ---------- */
-const VIEWS = ['loading', 'login', 'setup', 'home', 'fresh', 'pantry', 'settings'];
+const VIEWS = ['loading', 'login', 'setup', 'home', 'fresh', 'pantry', 'recipes', 'settings'];
 function show(view){
   for (const v of VIEWS) $('view-' + v).hidden = v !== view;
-  const inApp = ['home', 'fresh', 'pantry', 'settings'].includes(view);
+  const inApp = ['home', 'fresh', 'pantry', 'recipes', 'settings'].includes(view);
   $('tabs').hidden = !inApp;
   $('fab').hidden = !inApp || view === 'settings';
   if (inApp){
@@ -441,6 +581,8 @@ function render(){
     }
   }
 
+  if (currentView === 'home' || currentView === 'recipes') renderRecipes(active, fresh);
+
   if (currentView === 'fresh'){
     $('fresh-groups').innerHTML = ZONE_LOCATIONS.fresh.map(loc => {
       const list = fresh.filter(i => i.location === loc);
@@ -473,13 +615,16 @@ async function loadHousehold(){
   household = data?.households || null;
 }
 async function loadAll(){
-  const [m, i, f] = await Promise.all([
+  const [m, i, f, r] = await Promise.all([
     SB.from('household_members').select('user_id, display_name').eq('household_id', household.id),
     SB.from('items').select('*').eq('household_id', household.id).eq('status', 'active'),
-    SB.from('foods').select('*').eq('household_id', household.id).order('name')
+    SB.from('foods').select('*').eq('household_id', household.id).order('name'),
+    SB.from('recipes').select('*, recipe_ingredients(*)').eq('household_id', household.id)
   ]);
-  for (const r of [m, i, f]) if (r.error) throw r.error;
+  for (const res of [m, i, f, r]) if (res.error) throw res.error;
   members = m.data; items = i.data; foods = f.data;
+  recipes = r.data.map(x => ({ ...x, recipe_ingredients:(x.recipe_ingredients || []).sort((a, b) => a.position - b.position) }))
+    .sort((a, b) => (b.is_favorite - a.is_favorite) || b.created_at.localeCompare(a.created_at));
   $('food-names').innerHTML = foods.map(x => `<option value="${esc(x.name)}">`).join('');
   render();
 }
@@ -488,6 +633,9 @@ function subscribe(){
   // 相手の追加・変更をすぐ反映する。
   channel = SB.channel('household-' + household.id)
     .on('postgres_changes', { event:'*', schema:'public', table:'items', filter:`household_id=eq.${household.id}` }, () => {
+      loadAll().catch(console.error);
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'recipes', filter:`household_id=eq.${household.id}` }, () => {
       loadAll().catch(console.error);
     })
     .subscribe();
@@ -710,7 +858,7 @@ function openVoice(){
   showError('voice-error', null);
   $('voice-dialog').showModal();
 }
-$('fab').addEventListener('click', openVoice);
+$('fab').addEventListener('click', () => currentView === 'recipes' ? openRecipeAdd() : openVoice());
 
 $('voice-mic').addEventListener('click', async () => {
   if (listening) return stopRecognition();
@@ -726,12 +874,12 @@ $('voice-manual').addEventListener('click', () => {
   openManualAdd();
 });
 
-async function functionError(error){
+async function functionError(error, prefix = '整理できませんでした'){
   try {
     const body = await error.context.json();
-    if (body?.error) return new Error(`整理できませんでした（${body.error}）`);
+    if (body?.error) return new Error(`${prefix}（${body.error}）`);
   } catch (e) {}
-  return new Error(`整理できませんでした（${error.message || error}）`);
+  return new Error(`${prefix}（${error.message || error}）`);
 }
 
 function reviewRow(item, index){
@@ -853,6 +1001,460 @@ $('review-save').addEventListener('click', async () => {
     showError('review-error', err);
   } finally {
     updateReviewSave();
+  }
+});
+
+/* ---------- レシピ ---------- */
+const RECIPE_BUCKET = 'recipe-images';
+const IMAGE_MAX_SIDE = 1568;
+const MAX_RECIPE_IMAGES = 4;
+const SEASONING_WORDS = ['塩', 'こしょう', '胡椒', '砂糖', 'しょうゆ', '醤油', 'みりん', '酒', '酢', 'みそ', '味噌', '油',
+  'バター', '片栗粉', '小麦粉', '薄力粉', 'パン粉', 'だし', 'だしの素', 'コンソメ', 'スープの素', 'マヨネーズ',
+  'ケチャップ', 'ソース', 'めんつゆ', 'ポン酢', '豆板醤', 'コチュジャン', '甜麺醤', 'カレー粉', '水', '湯',
+  'ごま', 'にんにくチューブ', 'しょうがチューブ', 'おろしにんにく', 'おろししょうが', 'ラー油', 'はちみつ', '粉チーズ'];
+let recipeFilter = 'all';
+let editing = null;
+let viewing = null;
+
+const kataToHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+// 表記ゆれを吸収して比べるための形。括弧書きや見出し記号を外し、カタカナはひらがなにそろえる。
+function normName(s){
+  return kataToHira(String(s || '').normalize('NFKC')
+    .replace(/[(\[【][^)\]】]*[)\]】]/g, '')
+    .replace(/^[★☆●◎◆・※*]+/, '')
+    .replace(/\s+/g, '')
+    .toLowerCase());
+}
+const SEASONING_NORMS = SEASONING_WORDS.map(normName);
+function guessSeasoning(name){
+  const n = normName(name);
+  return SEASONING_NORMS.some(k => n === k || (n.endsWith(k) && n.length <= k.length + 3));
+}
+// 材料名から食材マスタを探す。完全一致・別名のあとに「鶏むね肉皮なし」→「鶏むね肉」のような前方一致を見る。
+function foodForIngredient(name){
+  const n = normName(name);
+  if (!n) return null;
+  const exact = foods.find(f => normName(f.name) === n || f.aliases.some(a => normName(a) === n));
+  if (exact) return exact;
+  return foods.filter(f => { const fn = normName(f.name); return fn.length >= 2 && n.startsWith(fn); })
+    .sort((a, b) => b.name.length - a.name.length)[0] || null;
+}
+function itemMatches(ing, item){
+  if (ing.food_id && item.food_id === ing.food_id) return true;
+  const n = normName(ing.name);
+  const itn = normName(item.name);
+  if (!n || !itn) return false;
+  if (itn === n || (itn.length >= 2 && n.startsWith(itn))) return true;
+  const food = item.food_id && foods.find(f => f.id === item.food_id);
+  return !!food && food.aliases.some(a => normName(a) === n);
+}
+// 早く使うべき食材ほど重い。冷凍とストックは急がない。
+function urgencyWeight(item){
+  if (item.zone === 'pantry') return 1;
+  if (item.location === 'freezer') return 1.5;
+  const n = daysLeft(item);
+  if (n == null) return 2;
+  if (n <= 0) return 5;
+  if (n <= 2) return 4;
+  if (n <= 4) return 3;
+  return 2;
+}
+function analyze(recipe, active){
+  const have = [];
+  const missing = [];
+  for (const ing of recipe.recipe_ingredients){
+    if (ing.is_seasoning) continue;
+    const matched = active.filter(item => itemMatches(ing, item)).sort((a, b) => urgencyWeight(b) - urgencyWeight(a));
+    if (matched.length) have.push({ ing, items:matched, weight:urgencyWeight(matched[0]) });
+    else missing.push(ing);
+  }
+  const score = have.reduce((sum, h) => sum + h.weight, 0) - 1.5 * missing.length + (recipe.is_favorite ? 1 : 0);
+  return { recipe, have, missing, score };
+}
+function haveLabel(h){
+  const item = h.items[0];
+  const n = item.zone === 'fresh' && item.location !== 'freezer' ? daysLeft(item) : null;
+  if (n == null) return h.ing.name;
+  return `${h.ing.name}（${n < 0 ? `${-n}日過ぎ` : n === 0 ? '今日まで' : `あと${n}日`}）`;
+}
+function recipeRow(a){
+  const r = a.recipe;
+  const parts = [];
+  if (a.have.length) parts.push('使える：' + a.have.map(haveLabel).join('・'));
+  if (a.missing.length) parts.push('足りない：' + a.missing.map(i => i.name).join('・'));
+  if (!parts.length) parts.push([r.servings, r.minutes ? `${r.minutes}分` : ''].filter(Boolean).join('・') || '材料なし');
+  const badge = a.have.length && !a.missing.length ? '<span class="badge ok">そろってる</span>' : '';
+  return `<li><button class="item" data-recipe="${esc(r.id)}">
+    <span class="item-main"><span class="item-name">${r.is_favorite ? '<span class="star-mark">★</span>' : ''}${esc(r.title)}</span>
+      <span class="item-sub">${esc(parts.join('　'))}</span></span>${badge}
+  </button></li>`;
+}
+function searchLinks(names){
+  if (!names.length) return '';
+  const q = encodeURIComponent(names.slice(0, 3).join(' '));
+  return `<div class="search-links">${esc(names.slice(0, 3).join('・'))}でレシピを探す：
+    <a href="https://www.kurashiru.com/search?query=${q}" target="_blank" rel="noopener">クラシル</a>・<a href="https://cookpad.com/jp/search/${q}" target="_blank" rel="noopener">クックパッド</a></div>`;
+}
+
+function renderRecipes(active, fresh){
+  const analyses = recipes.map(r => analyze(r, active));
+  const suggested = analyses.filter(a => a.have.length).sort((a, b) => b.score - a.score);
+  const urgentNames = [...new Set(fresh.filter(i => i.location !== 'freezer' && daysLeft(i) != null && daysLeft(i) <= 3).map(i => i.name))];
+
+  if (currentView === 'home'){
+    $('home-recipes-wrap').hidden = !suggested.length;
+    $('home-recipes').innerHTML = suggested.slice(0, 3).map(recipeRow).join('');
+    $('home-search-links').innerHTML = searchLinks(urgentNames);
+    return;
+  }
+
+  const q = normName($('recipe-search').value);
+  const visible = analyses.filter(a => (recipeFilter === 'all' || a.recipe.is_favorite)
+    && (!q || normName(a.recipe.title).includes(q) || a.recipe.recipe_ingredients.some(i => normName(i.name).includes(q))));
+  const top = q ? [] : suggested.filter(a => recipeFilter === 'all' || a.recipe.is_favorite).slice(0, 5);
+  $('recipe-suggest-wrap').hidden = !top.length;
+  $('recipe-suggest').innerHTML = top.map(recipeRow).join('');
+  $('recipe-search-links').innerHTML = q ? '' : searchLinks(urgentNames);
+  $('recipe-all-title').textContent = `レシピ帳（${visible.length}）`;
+  $('recipe-all').innerHTML = visible.length ? visible.map(recipeRow).join('')
+    : `<li class="empty">${recipes.length ? '見つかりませんでした' : '「＋」から、雑誌の写真やレシピサイトの URL で登録できます'}</li>`;
+}
+$('recipe-search').addEventListener('input', render);
+$('recipe-filter').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  recipeFilter = b.dataset.v;
+  setSeg('recipe-filter', recipeFilter);
+  render();
+});
+
+/* 画像 */
+function shrinkImage(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, IMAGE_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => {
+        if (!blob) return reject(new Error('画像を変換できませんでした'));
+        const reader = new FileReader();
+        reader.onload = () => resolve({ blob, base64:String(reader.result).split(',')[1] });
+        reader.onerror = () => reject(new Error('画像を読み込めませんでした'));
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('画像を読み込めませんでした')); };
+    img.src = url;
+  });
+}
+async function signedUrls(paths){
+  if (!paths.length) return [];
+  const { data, error } = await SB.storage.from(RECIPE_BUCKET).createSignedUrls(paths, 3600);
+  if (error) throw error;
+  return data.map(d => d.signedUrl).filter(Boolean);
+}
+const thumbsHtml = urls => urls.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="元の写真"></a>`).join('');
+async function removeImages(paths){
+  if (paths.length) await SB.storage.from(RECIPE_BUCKET).remove(paths).catch(console.error);
+}
+
+/* 追加 */
+let addToken = 0;
+function openRecipeAdd(){
+  addToken++;
+  $('ra-url').value = '';
+  $('ra-status').textContent = '';
+  showError('ra-error', null);
+  for (const id of ['ra-photo', 'ra-url-go', 'ra-manual']) $(id).disabled = false;
+  $('recipe-add-dialog').showModal();
+}
+function setAddBusy(message){
+  $('ra-status').textContent = message || '';
+  for (const id of ['ra-photo', 'ra-url-go', 'ra-manual']) $(id).disabled = !!message;
+}
+$('ra-cancel').addEventListener('click', () => { addToken++; $('recipe-add-dialog').close(); });
+$('ra-manual').addEventListener('click', () => {
+  $('recipe-add-dialog').close();
+  openRecipeEdit({ source_type:'manual', recipe_ingredients:[] }, { lead:'' });
+});
+$('ra-url-go').addEventListener('click', async () => {
+  showError('ra-error', null);
+  const url = $('ra-url').value.trim();
+  if (!/^https?:\/\//.test(url)) return showError('ra-error', 'レシピのページの URL を貼り付けてください');
+  const token = ++addToken;
+  setAddBusy('ページを読み込んでいます…');
+  try {
+    const { data, error } = await SB.functions.invoke('import-recipe-url', { body:{ url } });
+    if (token !== addToken) return;
+    if (error) throw await functionError(error, '取り込めませんでした');
+    $('recipe-add-dialog').close();
+    openRecipeEdit({
+      title:data.title, servings:data.servings, minutes:data.minutes, steps:data.steps,
+      source_type:'url', source_url:data.source_url,
+      recipe_ingredients:data.ingredients.map(i => ({ ...i, is_seasoning:guessSeasoning(i.name) }))
+    }, { lead:'サイトから取り込みました。材料の「調味料」の印は自動で付けています。違うところは直してください。' });
+  } catch (err){
+    if (token === addToken) showError('ra-error', err);
+  } finally {
+    if (token === addToken) setAddBusy(null);
+  }
+});
+$('ra-photo').addEventListener('click', () => $('ra-files').click());
+$('ra-files').addEventListener('change', async () => {
+  const files = [...$('ra-files').files];
+  $('ra-files').value = '';
+  if (!files.length) return;
+  showError('ra-error', null);
+  if (files.length > MAX_RECIPE_IMAGES) return showError('ra-error', `写真は${MAX_RECIPE_IMAGES}枚までです`);
+  const token = ++addToken;
+  setAddBusy('写真を読み取っています。30秒〜1分ほどかかります…');
+  const paths = [];
+  try {
+    const shrunk = await Promise.all(files.map(shrinkImage));
+    // 元の写真はレシピと一緒に残し、あとで見比べられるようにする。
+    await Promise.all(shrunk.map(async ({ blob }) => {
+      const path = `${household.id}/${crypto.randomUUID()}.jpg`;
+      const { error } = await SB.storage.from(RECIPE_BUCKET).upload(path, blob, { contentType:'image/jpeg' });
+      if (error) throw error;
+      paths.push(path);
+    }));
+    const { data, error } = await SB.functions.invoke('read-recipe-image', {
+      body:{ images:shrunk.map(s => ({ data:s.base64, media_type:'image/jpeg' })) }
+    });
+    if (token !== addToken){ removeImages(paths); return; }
+    if (error) throw await functionError(error, '読み取れませんでした');
+    if (!data.found) throw new Error('写真からレシピが見つかりませんでした。材料と作り方が写るように撮り直してください。');
+    $('recipe-add-dialog').close();
+    const unclear = data.ingredients.filter(i => i.unclear).length;
+    openRecipeEdit({
+      title:data.title, servings:data.servings, minutes:data.minutes, steps:data.steps,
+      source_type:'image', source_images:paths, recipe_ingredients:data.ingredients
+    }, {
+      lead:'写真から書き起こしました。元の写真と見比べて、違うところは直してください。'
+        + (unclear ? `黄色の材料${unclear}つは読み取りに自信がないものです。` : ''),
+      previews:shrunk.map(s => URL.createObjectURL(s.blob)),
+      newImages:paths
+    });
+  } catch (err){
+    removeImages(paths);
+    if (token === addToken) showError('ra-error', err);
+  } finally {
+    if (token === addToken) setAddBusy(null);
+  }
+});
+
+/* 編集 */
+function ingRow(ing = {}){
+  return `<li class="ing-row${ing.unclear ? ' uncertain' : ''}">
+    <input class="ing-name" value="${esc(ing.name)}" placeholder="材料" aria-label="材料">
+    <input class="ing-amount" value="${esc(ing.amount)}" placeholder="分量" aria-label="分量">
+    <label class="ing-seas"><input type="checkbox" class="ing-s"${ing.is_seasoning ? ' checked' : ''}>調味料</label>
+    <button type="button" class="ing-del" aria-label="この材料を消す">×</button>
+  </li>`;
+}
+async function openRecipeEdit(recipe, { lead = '', previews = null, newImages = [] } = {}){
+  editing = { recipe, newImages, previews };
+  $('re-heading').textContent = recipe.id ? 'レシピの編集' : 'レシピの確認';
+  $('re-lead').textContent = lead;
+  $('re-title').value = recipe.title || '';
+  $('re-servings').value = recipe.servings || '';
+  $('re-minutes').value = recipe.minutes || '';
+  $('re-note').value = recipe.source_note || '';
+  const ings = recipe.recipe_ingredients.length ? recipe.recipe_ingredients : [{}, {}, {}];
+  $('re-ings').innerHTML = ings.map(ingRow).join('');
+  $('re-steps').value = (recipe.steps || []).join('\n');
+  showError('re-error', null);
+  $('re-thumbs').innerHTML = previews ? thumbsHtml(previews) : '';
+  $('recipe-edit-dialog').showModal();
+  if (!previews && recipe.source_images?.length){
+    signedUrls(recipe.source_images).then(urls => { $('re-thumbs').innerHTML = thumbsHtml(urls); }).catch(console.error);
+  }
+}
+$('re-add-ing').addEventListener('click', () => {
+  $('re-ings').insertAdjacentHTML('beforeend', ingRow());
+  $('re-ings').lastElementChild.querySelector('.ing-name').focus();
+});
+$('re-ings').addEventListener('click', e => {
+  if (e.target.classList.contains('ing-del')) e.target.closest('.ing-row').remove();
+});
+// 新しく入れた材料名が調味料らしければ印を付ける。
+$('re-ings').addEventListener('change', e => {
+  if (!e.target.classList.contains('ing-name')) return;
+  const row = e.target.closest('.ing-row');
+  if (guessSeasoning(e.target.value)) row.querySelector('.ing-s').checked = true;
+});
+function closeRecipeEdit(saved){
+  if (!editing) return;
+  if (!saved) removeImages(editing.newImages);
+  (editing.previews || []).forEach(u => URL.revokeObjectURL(u));
+  editing = null;
+}
+$('re-cancel').addEventListener('click', () => $('recipe-edit-dialog').close());
+$('recipe-edit-dialog').addEventListener('close', () => closeRecipeEdit(false));
+
+$('re-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  showError('re-error', null);
+  const base = editing.recipe;
+  const title = $('re-title').value.trim();
+  if (!title) return;
+  const ingredients = [...$('re-ings').querySelectorAll('.ing-row')].map(row => ({
+    name:row.querySelector('.ing-name').value.trim(),
+    amount:row.querySelector('.ing-amount').value.trim(),
+    is_seasoning:row.querySelector('.ing-s').checked
+  })).filter(i => i.name);
+  const steps = $('re-steps').value.split('\n')
+    .map(s => s.replace(/^\s*(?:\d+|[０-９]+|[①-⑳])[.．、)）:\s]*/, '').trim()).filter(Boolean);
+  const row = {
+    household_id:household.id, title, servings:$('re-servings').value.trim(),
+    minutes:parseInt($('re-minutes').value, 10) || null, steps,
+    source_type:base.source_type || 'manual', source_url:base.source_url || null,
+    source_images:base.source_images || [], source_note:$('re-note').value.trim()
+  };
+  $('re-save').disabled = true;
+  try {
+    let id = base.id;
+    if (id){
+      const { error } = await SB.from('recipes').update(row).eq('id', id);
+      if (error) throw error;
+      const { error:delError } = await SB.from('recipe_ingredients').delete().eq('recipe_id', id);
+      if (delError) throw delError;
+    } else {
+      const { data, error } = await SB.from('recipes').insert(row).select('id').single();
+      if (error) throw error;
+      id = data.id;
+    }
+    if (ingredients.length){
+      const { error } = await SB.from('recipe_ingredients').insert(ingredients.map((ing, position) => ({
+        recipe_id:id, food_id:foodForIngredient(ing.name)?.id || null, position, ...ing
+      })));
+      if (error) throw error;
+    }
+    closeRecipeEdit(true);
+    $('recipe-edit-dialog').close();
+    await loadAll();
+    if (!$('recipe-view-dialog').open && currentView !== 'recipes') show('recipes');
+    if ($('recipe-view-dialog').open) openRecipe(id);
+  } catch (err){
+    showError('re-error', err);
+  } finally {
+    $('re-save').disabled = false;
+  }
+});
+
+/* 表示 */
+function openRecipe(id){
+  const recipe = recipes.find(r => r.id === id);
+  if (!recipe) return;
+  const active = items.filter(i => i.status === 'active');
+  const a = analyze(recipe, active);
+  viewing = { recipe, analysis:a };
+  $('rv-title').textContent = recipe.title;
+  $('rv-fav').setAttribute('aria-pressed', String(recipe.is_favorite));
+  $('rv-meta').textContent = [recipe.servings, recipe.minutes ? `${recipe.minutes}分` : '',
+    a.have.length ? `在庫にある材料 ${a.have.length}/${a.have.length + a.missing.length}` : ''].filter(Boolean).join('・');
+  const haveByIng = new Map(a.have.map(h => [h.ing, h]));
+  $('rv-ings').innerHTML = recipe.recipe_ingredients.map(ing => {
+    if (ing.is_seasoning){
+      return `<li class="seas"><span class="ing-mark"></span><span class="ing-n">${esc(ing.name)}</span><span class="ing-a">${esc(ing.amount)}</span></li>`;
+    }
+    const h = haveByIng.get(ing);
+    const badge = h && h.items[0].zone === 'fresh' ? leftBadge(h.items[0]) : '';
+    return `<li><span class="ing-mark ${h ? 'have' : 'miss'}" aria-label="${h ? '在庫あり' : '在庫なし'}">${h ? '✓' : '−'}</span>
+      <span class="ing-n">${esc(ing.name)}</span><span class="ing-a">${esc(ing.amount)}</span>${badge}</li>`;
+  }).join('') || '<li class="empty">材料が登録されていません</li>';
+  $('rv-steps').innerHTML = (recipe.steps || []).map(s => `<li>${esc(s)}</li>`).join('') || '<li class="muted">作り方が登録されていません</li>';
+  const source = [];
+  if (recipe.source_url){
+    let host = recipe.source_url;
+    try { host = new URL(recipe.source_url).hostname; } catch (e) {}
+    source.push(`出典：<a href="${esc(recipe.source_url)}" target="_blank" rel="noopener">${esc(host)}</a>`);
+  }
+  if (recipe.source_note) source.push(esc(recipe.source_note));
+  $('rv-source').innerHTML = source.join('<br>');
+  $('rv-thumbs').innerHTML = '';
+  if (recipe.source_images?.length){
+    signedUrls(recipe.source_images).then(urls => {
+      if (viewing?.recipe.id === id) $('rv-thumbs').innerHTML = thumbsHtml(urls);
+    }).catch(console.error);
+  }
+  $('rv-cook').hidden = true;
+  $('rv-actions').hidden = false;
+  showError('rv-error', null);
+  if (!$('recipe-view-dialog').open) $('recipe-view-dialog').showModal();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button[data-recipe]');
+  if (b) openRecipe(b.dataset.recipe);
+});
+$('rv-close').addEventListener('click', () => $('recipe-view-dialog').close());
+$('recipe-view-dialog').addEventListener('close', () => { viewing = null; });
+$('rv-fav').addEventListener('click', async () => {
+  const next = !viewing.recipe.is_favorite;
+  const { error } = await SB.from('recipes').update({ is_favorite:next }).eq('id', viewing.recipe.id);
+  if (error) return showError('rv-error', error);
+  viewing.recipe.is_favorite = next;
+  $('rv-fav').setAttribute('aria-pressed', String(next));
+  loadAll().catch(console.error);
+});
+$('rv-edit').addEventListener('click', () => openRecipeEdit(viewing.recipe));
+$('rv-delete').addEventListener('click', async () => {
+  const recipe = viewing.recipe;
+  if (!confirm(`「${recipe.title}」をレシピ帳から削除しますか？`)) return;
+  const { error } = await SB.from('recipes').delete().eq('id', recipe.id);
+  if (error) return showError('rv-error', error);
+  removeImages(recipe.source_images || []);
+  $('recipe-view-dialog').close();
+  await loadAll();
+});
+
+/* 作った */
+$('rv-cooked').addEventListener('click', () => {
+  // 材料ごとに一番急ぐ食材だけ最初からチェックする。ストックは量が残ることが多いので外しておく。
+  const seen = new Set();
+  const rows = [];
+  for (const h of viewing.analysis.have){
+    h.items.forEach((item, idx) => {
+      if (seen.has(item.id)) return;
+      seen.add(item.id);
+      rows.push({ item, checked:idx === 0 && item.zone === 'fresh' });
+    });
+  }
+  $('rv-cook-list').innerHTML = rows.length ? rows.map(({ item, checked }) => `<li class="r-row">
+    <input type="checkbox" class="r-on" value="${esc(item.id)}"${checked ? ' checked' : ''} aria-label="${esc(item.name)}を在庫から外す">
+    <div class="r-body"><div class="item-name">${esc(item.name)}</div>
+      <div class="r-src">${esc(item.zone === 'fresh' ? freshSub(item) : 'ストック・' + pantrySub(item))}</div></div>
+    ${item.zone === 'fresh' ? leftBadge(item) : ''}
+  </li>`).join('') : '<li class="empty">在庫にある材料はありません。作った記録だけ残します。</li>';
+  $('rv-actions').hidden = true;
+  $('rv-cook').hidden = false;
+});
+$('rv-cook-cancel').addEventListener('click', () => {
+  $('rv-cook').hidden = true;
+  $('rv-actions').hidden = false;
+});
+$('rv-cook-save').addEventListener('click', async () => {
+  showError('rv-error', null);
+  const ids = [...$('rv-cook-list').querySelectorAll('.r-on:checked')].map(c => c.value);
+  $('rv-cook-save').disabled = true;
+  try {
+    const { error } = await SB.from('cook_log').insert({ household_id:household.id, recipe_id:viewing.recipe.id });
+    if (error) throw error;
+    if (ids.length){
+      const { error:itemError } = await SB.from('items')
+        .update({ status:'used', finished_at:new Date().toISOString(), finished_by:user.id }).in('id', ids);
+      if (itemError) throw itemError;
+    }
+    $('recipe-view-dialog').close();
+    await loadAll();
+  } catch (err){
+    showError('rv-error', err);
+  } finally {
+    $('rv-cook-save').disabled = false;
   }
 });
 

@@ -1,2 +1,8 @@
 [functions.parse-voice]
 verify_jwt = true
+
+[functions.import-recipe-url]
+verify_jwt = true
+
+[functions.read-recipe-image]
+verify_jwt = true
